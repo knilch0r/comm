@@ -2,7 +2,7 @@
 
 ![](https://github.com/knilch0r/comm/workflows/C%20CI/badge.svg)
 
-Based on FreeBSD comm, ported to Linux and ```mmap()```, and demolished on the way.
+Based on FreeBSD ```comm```, ported to Linux and ```mmap()```, and demolished on the way.
 
 ## Why?
 
@@ -29,7 +29,7 @@ real  25m44.049s
 user  24m58.376s
 sys  0m45.434s
 ```
-Unfortunately, the FreeBSD version choses to fiddle eacht input line through some wide char conversion
+Unfortunately, the FreeBSD version choses to fiddle each input line through some wide char conversion
 functions, ```malloc()```ing and ```free()```ing all along, which makes it way slower.
 
 Fortunately, you can remove that conversion stuff quite easily.
