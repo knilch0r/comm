@@ -41,10 +41,10 @@ user  2m30.566s
 sys  0m35.487s
 ```
 
-Then, while removing stuff, I wondered - why not remove all that stdio FILE API and use good ol'
-unportable mmap() instead? Some shortcuts during implementing reduced functionality significantly
-(basically, only the options giving one column output still do what they're expected to, and
-we're only handling ASCII, no i18n). But the result is quite nice:
+Then, while removing stuff, I wondered - why not remove all that stdio API and use good ol'
+unportable ```mmap()``` instead? Some shortcuts during implementing reduced functionality
+significantly (basically, only the options giving one column output still do what they're
+expected to, and we're only handling ASCII, no i18n). But the result is quite nice:
 
 ```bash
 $ time ./comm -12 fileA fileB >/dev/null
