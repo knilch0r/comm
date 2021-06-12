@@ -57,14 +57,18 @@ __FBSDID("$FreeBSD$");
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef WANT_SLOW_WCHAR_STUFF
 #include <wchar.h>
 #include <wctype.h>
 
 static int iflag;
+#endif
 static const char *tabs[] = { "", "\t", "\t\t" };
 
 static FILE	*file(const char *);
+#ifdef WANT_SLOW_WCHAR_STUFF
 static wchar_t	*convert(const char *);
+#endif
 static void	show(FILE *, const char *, const char *, char **, size_t *);
 static void	usage(void);
 
@@ -78,7 +82,9 @@ main(int argc, char *argv[])
 	size_t line1len, line2len;
 	char *line1, *line2;
 	ssize_t n1, n2;
+#ifdef WANT_SLOW_WCHAR_STUFF
 	wchar_t *tline1, *tline2;
+#endif
 	const char **p;
 
 	(void) setlocale(LC_ALL, "");
@@ -96,9 +102,11 @@ main(int argc, char *argv[])
 		case '3':
 			flag3 = 0;
 			break;
+#ifdef WANT_SLOW_WCHAR_STUFF
 		case 'i':
 			iflag = 1;
 			break;
+#endif
 		case '?':
 		default:
 			usage();
@@ -156,6 +164,7 @@ main(int argc, char *argv[])
 			break;
 		}
 
+#ifdef WANT_SLOW_WCHAR_STUFF
 		tline2 = NULL;
 		if ((tline1 = convert(line1)) != NULL)
 			tline2 = convert(line2);
@@ -167,6 +176,9 @@ main(int argc, char *argv[])
 			free(tline1);
 		if (tline2 != NULL)
 			free(tline2);
+#else
+		comp = strcmp(line1, line2);
+#endif
 
 		/* lines are the same */
 		if (!comp) {
@@ -192,6 +204,7 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
+#ifdef WANT_SLOW_WCHAR_STUFF
 static wchar_t *
 convert(const char *str)
 {
@@ -214,6 +227,7 @@ convert(const char *str)
 
 	return (buf);
 }
+#endif
 
 static void
 show(FILE *fp, const char *fn, const char *offset, char **bufp, size_t *buflenp)
@@ -247,6 +261,10 @@ file(const char *name)
 static void
 usage(void)
 {
+#ifdef WANT_SLOW_WCHAR_STUFF
 	(void)fprintf(stderr, "usage: comm [-123i] file1 file2\n");
+#else
+	(void)fprintf(stderr, "usage: comm [-123] file1 file2\n");
+#endif
 	exit(1);
 }
