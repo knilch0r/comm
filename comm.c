@@ -58,6 +58,14 @@ static char sccsid[] = "From: @(#)comm.c	8.4 (Berkeley) 5/4/95";
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __GNUC__
+#define likely(x)     __builtin_expect((x),1)
+#define unlikely(x)   __builtin_expect((x),0)
+#else
+#define likely(x)     x
+#define unlikely(x)   x
+#endif
+
 static void file(const char *name, const char **fp, size_t *len);
 static void show(const char *p, int offset, size_t len);
 static void usage(void);
@@ -68,8 +76,8 @@ static inline int lncompare(const char *sa, const char *sb)
 	do {
 		ca = *sa++;
 		cb = *sb++;
-		if (ca == '\n') return ca - cb;
-		if (!ca) return ca - cb;
+		if (unlikely(ca == '\n')) return ca - cb;
+		if (unlikely(!ca)) return ca - cb;
 	} while (ca == cb);
 	return ca - cb;
 }
@@ -78,7 +86,7 @@ static inline void nextline(const char **fp, size_t *fl)
 {
 	const char *old = *fp, *new = *fp;
 	int c = *new++;
-	while (c != '\n' && c) c = *new++;
+	while (likely(c != '\n' && c)) c = *new++;
 	*fl -= (new - old);
 	*fp = new;
 }
