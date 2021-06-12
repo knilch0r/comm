@@ -47,7 +47,7 @@ unportable mmap() instead? Some shortcuts during implementing reduced functional
 we're only handling ASCII, no i18n). But the result is quite nice:
 
 ```bash
-$ time ./comm-freebsd-noconv -12 fileA fileB >/dev/null
+$ time ./comm -12 fileA fileB >/dev/null
 
 real	1m56.946s
 user	1m34.344s
