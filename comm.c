@@ -44,11 +44,10 @@ static char sccsid[] = "From: @(#)comm.c	8.4 (Berkeley) 5/4/95";
 #endif
 #endif
 
-#if 0
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-#endif
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 #include <err.h>
 #include <limits.h>
 #include <locale.h>
@@ -57,25 +56,41 @@ __FBSDID("$FreeBSD$");
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-static const char *tabs[] = { "", "\t", "\t\t" };
 
-static FILE	*file(const char *);
-static void	show(FILE *, const char *, const char *, char **, size_t *);
-static void	usage(void);
+static void file(const char *name, const char **fp, size_t *len);
+static void show(const char *p, int offset, size_t len);
+static void usage(void);
 
-int
-main(int argc, char *argv[])
+static inline int lncompare(const char *sa, const char *sb)
 {
-	int comp, read1, read2;
-	int ch, flag1, flag2, flag3;
-	FILE *fp1, *fp2;
-	const char *col1, *col2, *col3;
-	size_t line1len, line2len;
-	char *line1, *line2;
-	ssize_t n1, n2;
-	const char **p;
+	int ca, cb;
+	do {
+		ca = *sa++;
+		cb = *sb++;
+		if (ca == '\n') return ca - cb;
+		if (!ca) return ca - cb;
+	} while (ca == cb);
+	return ca - cb;
+}
 
-	(void) setlocale(LC_ALL, "");
+static inline void nextline(const char **fp, size_t *fl)
+{
+	const char *old = *fp, *new = *fp;
+	int c = *new++;
+	while (c != '\n' && c) c = *new++;
+	*fl -= (new - old);
+	*fp = new;
+}
+
+int main(int argc, char *argv[])
+{
+	int comp;
+	int ch, flag1, flag2, flag3;
+	const char *fp1, *fp2;
+	size_t fl1, fl2;
+	int col1, col2, col3;
+	int p;
+	const char *old;
 
 	flag1 = flag2 = flag3 = 1;
 
@@ -100,110 +115,89 @@ main(int argc, char *argv[])
 	if (argc != 2)
 		usage();
 
-	fp1 = file(argv[0]);
-	fp2 = file(argv[1]);
+	file(argv[0], &fp1, &fl1);
+	file(argv[1], &fp2, &fl2);
 
-	/* for each column printed, add another tab offset */
-	p = tabs;
-	col1 = col2 = col3 = NULL;
+	/* for each column printed, remember its number */
+	p = 1;
+	col1 = col2 = col3 = 0;
 	if (flag1)
-		col1 = *p++;
+		col1 = p++;
 	if (flag2)
-		col2 = *p++;
+		col2 = p++;
 	if (flag3)
-		col3 = *p;
+		col3 = p;
 
-	line1len = line2len = 0;
-	line1 = line2 = NULL;
-	n1 = n2 = -1;
-
-	for (read1 = read2 = 1;;) {
-		/* read next line, check for EOF */
-		if (read1) {
-			n1 = getline(&line1, &line1len, fp1);
-			if (n1 < 0 && ferror(fp1))
-				err(1, "%s", argv[0]);
-			if (n1 > 0 && line1[n1 - 1] == '\n')
-				line1[n1 - 1] = '\0';
-
-		}
-		if (read2) {
-			n2 = getline(&line2, &line2len, fp2);
-			if (n2 < 0 && ferror(fp2))
-				err(1, "%s", argv[1]);
-			if (n2 > 0 && line2[n2 - 1] == '\n')
-				line2[n2 - 1] = '\0';
-		}
-
+	while (1) {
 		/* if one file done, display the rest of the other file */
-		if (n1 < 0) {
-			if (n2 >= 0 && col2 != NULL)
-				show(fp2, argv[1], col2, &line2, &line2len);
+		if (!fl1) {
+			if (*fp2 && col2)
+				show(fp2, col2, fl2);
 			break;
 		}
-		if (n2 < 0) {
-			if (n1 >= 0 && col1 != NULL)
-				show(fp1, argv[0], col1, &line1, &line1len);
+		if (!fl2) {
+			if (*fp1 && col1)
+				show(fp1, col1, fl1);
 			break;
 		}
 
-		comp = strcmp(line1, line2);
+		comp = lncompare(fp1, fp2);
 
 		/* lines are the same */
 		if (!comp) {
-			read1 = read2 = 1;
-			if (col3 != NULL)
-				(void)printf("%s%s\n", col3, line1);
+			old = fp1;
+			nextline(&fp1, &fl1);
+			nextline(&fp2, &fl2);
+			if (col3)
+				/* FIXME prepend col3 */
+				write(STDOUT_FILENO, old, fp1 - old);
+				/* FIXME handle errors */
 			continue;
 		}
 
 		/* lines are different */
 		if (comp < 0) {
-			read1 = 1;
-			read2 = 0;
-			if (col1 != NULL)
-				(void)printf("%s%s\n", col1, line1);
+			old = fp1;
+			nextline(&fp1, &fl1);
+			if (col1)
+				/* FIXME prepend col1 */
+				write(STDOUT_FILENO, old, fp1 - old);
+				/* FIXME handle errors */
 		} else {
-			read1 = 0;
-			read2 = 1;
-			if (col2 != NULL)
-				(void)printf("%s%s\n", col2, line2);
+			old = fp2;
+			nextline(&fp2, &fl2);
+			if (col2)
+				/* FIXME prepend col2 */
+				write(STDOUT_FILENO, old, fp2 - old);
+				/* FIXME handle errors */
 		}
 	}
 	exit(0);
 }
 
-static void
-show(FILE *fp, const char *fn, const char *offset, char **bufp, size_t *buflenp)
+static void show(const char *p, int offset, size_t len)
 {
-	ssize_t n;
-
-	do {
-		(void)printf("%s%s\n", offset, *bufp);
-		if ((n = getline(bufp, buflenp, fp)) < 0)
-			break;
-		if (n > 0 && (*bufp)[n - 1] == '\n')
-			(*bufp)[n - 1] = '\0';
-	} while (1);
-	if (ferror(fp))
-		err(1, "%s", fn);
+	/* FIXME: do it line-by-line and prepend offset */
+	write(STDOUT_FILENO, p, len);
+	/* FIXME handle errors / EINTR */
 }
 
-static FILE *
-file(const char *name)
+static void file(const char *name, const char **fp, size_t *len)
 {
-	FILE *fp;
+	int fd;
+	struct stat s;
 
-	if (!strcmp(name, "-"))
-		return (stdin);
-	if ((fp = fopen(name, "r")) == NULL) {
-		err(1, "%s", name);
-	}
-	return (fp);
+	if (!strcmp(name, "-")) errx(1, "stdin not supported");
+
+	if (   ((fd = open(name, O_RDONLY)) < 0)
+	    || (fstat(fd, &s) < 0)
+	   ) err(1, "%s", name);
+
+	*len = s.st_size;
+	if ((*fp = mmap(NULL, *len, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED) err(1, "%s (mmap)", name);
 }
 
-static void
-usage(void)
+static void usage(void)
 {
 	(void)fprintf(stderr, "usage: comm [-123] file1 file2\n");
 	exit(1);
