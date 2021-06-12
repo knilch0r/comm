@@ -18,8 +18,8 @@ real	4m55.178s
 user	4m25.494s
 sys	0m29.418s
 ```
-The default version from GNU coreutils uses getc() to read in the data, which seems kind of a bottleneck.
-Also, it's coding style made my brain hurt.
+The default version from GNU coreutils uses ```getc()``` to read in the data, which seems kind of a
+bottleneck. Also, it's coding style made my brain hurt.
 
 Next, I tried a BSD version, the one from FreeBSD; there, the code looked way more nice.
 ```bash
