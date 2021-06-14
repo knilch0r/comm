@@ -62,6 +62,33 @@ static void file(const char *name, const char **fp, size_t *len);
 static void show(const char *p, int offset, size_t len);
 static void usage(void);
 
+#define BUFSIZE 1024*1024
+
+static char buf[BUFSIZE];
+static size_t bufpos;
+
+static inline void flushbuffer(void)
+{
+	write(STDOUT_FILENO, buf, bufpos);
+	/* FIXME handle errors */
+	bufpos = 0;
+}
+
+static inline void bufout(int off, const char * p, size_t len)
+{
+	if (len > BUFSIZE) {
+		flushbuffer();
+		/* FIXME add off-1 tabs */
+		write(STDOUT_FILENO, p, len);
+		/* FIXME handle errors */
+		return;
+	}
+	if (len > BUFSIZE - bufpos) flushbuffer();
+	/* FIXME add off-1 tabs */
+	memcpy(buf + bufpos, p, len);
+	bufpos += len;
+}
+
 static inline int lncompare(const char *sa, const char *sb)
 {
 	int ca, cb;
@@ -113,8 +140,7 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 2)
-		usage();
+	if (argc != 2) usage();
 
 	file(argv[0], &fp1, &fl1);
 	file(argv[1], &fp2, &fl2);
@@ -122,23 +148,18 @@ int main(int argc, char *argv[])
 	/* for each column printed, remember its number */
 	p = 1;
 	col1 = col2 = col3 = 0;
-	if (flag1)
-		col1 = p++;
-	if (flag2)
-		col2 = p++;
-	if (flag3)
-		col3 = p;
+	if (flag1) col1 = p++;
+	if (flag2) col2 = p++;
+	if (flag3) col3 = p;
 
 	while (1) {
 		/* if one file done, display the rest of the other file */
 		if (!fl1) {
-			if (*fp2 && col2)
-				show(fp2, col2, fl2);
+			if (*fp2 && col2) show(fp2, col2, fl2);
 			break;
 		}
 		if (!fl2) {
-			if (*fp1 && col1)
-				show(fp1, col1, fl1);
+			if (*fp1 && col1) show(fp1, col1, fl1);
 			break;
 		}
 
@@ -149,10 +170,7 @@ int main(int argc, char *argv[])
 			old = fp1;
 			nextline(&fp1, &fl1);
 			nextline(&fp2, &fl2);
-			if (col3)
-				/* FIXME prepend col3 */
-				write(STDOUT_FILENO, old, fp1 - old);
-				/* FIXME handle errors */
+			if (col3) bufout(col3, old, fp1 - old);
 			continue;
 		}
 
@@ -160,24 +178,20 @@ int main(int argc, char *argv[])
 		if (comp < 0) {
 			old = fp1;
 			nextline(&fp1, &fl1);
-			if (col1)
-				/* FIXME prepend col1 */
-				write(STDOUT_FILENO, old, fp1 - old);
-				/* FIXME handle errors */
+			if (col1) bufout(col1, old, fp1 - old);
 		} else {
 			old = fp2;
 			nextline(&fp2, &fl2);
-			if (col2)
-				/* FIXME prepend col2 */
-				write(STDOUT_FILENO, old, fp2 - old);
-				/* FIXME handle errors */
+			if (col2) bufout(col2, old, fp2 - old);
 		}
 	}
+	flushbuffer();
 	exit(0);
 }
 
 static void show(const char *p, int offset, size_t len)
 {
+	flushbuffer();
 	/* FIXME: do it line-by-line and prepend offset */
 	write(STDOUT_FILENO, p, len);
 	/* FIXME handle errors / EINTR */
