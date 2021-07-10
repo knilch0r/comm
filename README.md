@@ -1,6 +1,8 @@
 # comm
 
 ![](https://github.com/knilch0r/comm/workflows/C%20CI/badge.svg)
+[![Scc Count Badge](https://sloc.xyz/github/knilch0r/comm)](https://github.com/boyter/scc/)
+[![Scc COCOMO Badge](https://sloc.xyz/github/knilch0r/comm?category=cocomo)](https://github.com/boyter/scc/)
 
 Based on FreeBSD ```comm```, ported to Linux and ```mmap()```, and demolished on the way.
 
@@ -25,9 +27,9 @@ Next, I tried a BSD version, the one from FreeBSD; there, the code looked way mo
 ```bash
 $ time LANG=C ./comm-freebsd -12 fileA fileB >/dev/null
 
-real  25m44.049s
-user  24m58.376s
-sys  0m45.434s
+real	25m44.049s
+user	24m58.376s
+sys	0m45.434s
 ```
 Unfortunately, the FreeBSD version choses to fiddle each input line through some wide char conversion
 functions, ```malloc()```ing and ```free()```ing all along, which makes it way slower.
@@ -36,9 +38,9 @@ Fortunately, you can remove that conversion stuff quite easily.
 ```bash
 $ time ./comm-freebsd-noconv -12 fileA fileB >/dev/null
 
-real  3m6.182s
-user  2m30.566s
-sys  0m35.487s
+real	3m6.182s
+user	2m30.566s
+sys	0m35.487s
 ```
 
 Then, while removing stuff, I wondered - why not remove all that stdio API and use good ol'
@@ -57,7 +59,7 @@ sys	0m21.870s
 ## To Do
 
 * add error handling
-* check if output buffering will increase performance (most likely it will)
+* check if output buffering will increase performance
 * be as fast as ```grep``` (searching for a single line takes around 45 seconds)
 * add multi-threading
 * add a project logo
